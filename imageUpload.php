@@ -16,8 +16,6 @@ fwrite($file, $binary);
 fclose($file);
 // echo 'Image upload complete, Please check your php file directory';
 
-
-
 $return["sucess"] = "true";
 echo json_encode($return,JSON_UNESCAPED_UNICODE);
 

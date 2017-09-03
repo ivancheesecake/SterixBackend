@@ -374,7 +374,11 @@ while($statement->fetch()){
 	$device_monitoring[$device_code]["activity"] = $activity;    
 
 	$device_monitoring[$device_code]["timestamp"] = $timestamp;
+	if($filename_link == null)
+		$filename_link ="";	
 	$device_monitoring[$device_code]["photo"] = $filename_link;
+	if($remarks == null)
+		$remarks ="";	
 	$device_monitoring[$device_code]["notes"] = $remarks;
 	// echo $device_code." ".$timestamp."<br />";    
     // array_push($return["device_monitoring"], $device_monitoring);
