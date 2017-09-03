@@ -7,17 +7,17 @@ $post = json_decode(file_get_contents("php://input"), true);
 
 // $userID = '12';
 
-// $userID = $post['user_id'];
-// $taskUpdates = $post['task_updates'];
-// $device_monitoring_updates= json_decode($post['device_monitoring_updates']);
-// $area_monitoring_updates= json_decode($post['area_monitoring_updates']);
-// $area_monitoring_pest_updates= json_decode($post['area_monitoring_pest_updates']);
+$userID = $post['user_id'];
+$taskUpdates = $post['task_updates'];
+$device_monitoring_updates= json_decode($post['device_monitoring_updates']);
+$area_monitoring_updates= json_decode($post['area_monitoring_updates']);
+$area_monitoring_pest_updates= json_decode($post['area_monitoring_pest_updates']);
 
-$userID = "12";
-$taskUpdates = "";
-$device_monitoring_updates = array();
-$area_monitoring_updates = array();
-$area_monitoring_pest_updates = array();
+// $userID = "12";
+// $taskUpdates = "";
+// $device_monitoring_updates = array();
+// $area_monitoring_updates = array();
+// $area_monitoring_pest_updates = array();
 // $device_monitoring_updates= json_decode('[{"service_order_id":"7","client_location_area_id":"3","device_code":"CTB007","device_condition_id":"4","activity_id":"5","timestamp":"2017-09-02 20:25:02","pests":"[{\"pest_ID\":\"0\",\"number\":\"69\"},{\"pest_ID\":\"1\",\"number\":\"11\"},{\"pest_ID\":\"2\",\"number\":\"10\"},{\"pest_ID\":\"4\",\"number\":\"10\"},{\"pest_ID\":\"5\",\"number\":\"11\"},{\"pest_ID\":\"6\",\"number\":\"11\"},{\"pest_ID\":\"8\",\"number\":\"10\"},{\"pest_ID\":\"9\",\"number\":\"69\"},{\"pest_ID\":\"10\",\"number\":\"69\"},{\"pest_ID\":\"13\",\"number\":\"69\"},{\"pest_ID\":\"15\",\"number\":\"11\"},{\"pest_ID\":\"17\",\"number\":\"10\"}]"},{"service_order_id":"8","client_location_area_id":"5","device_code":"CTB013","device_condition_id":"","activity_id":"","timestamp":"2017-09-02 20:26:19","pests":"[{\"pest_ID\":\"0\",\"number\":\"22\"},{\"pest_ID\":\"2\",\"number\":\"12\"},{\"pest_ID\":\"5\",\"number\":\"93\"}]"}]');
 
 // $area_monitoring_updates = json_decode('[{"service_order_id":"7","client_location_area_id":"3","findings":"neomu","proposed_action":"neomu","timestamp":"2017-09-03 06:54:29"},{"service_order_id":"8","client_location_area_id":"5","findings":"molla","proposed_action":"molla","timestamp":"2017-09-03 06:55:13"}]');
@@ -225,6 +225,8 @@ foreach($device_monitoring_updates as $d){
 	$timestamp = $d->timestamp;
 	$device_condition_ID = $d->device_condition_id;
 	$activity_ID = $d->activity_id;
+	$photo = $d->image;
+	$notes = $d->notes;
 	$pests = json_decode($d->pests);
 
 	$statement = $db->prepare("INSERT INTO `device_monitoring` 
@@ -240,6 +242,15 @@ foreach($device_monitoring_updates as $d){
 	$statement->execute();
 
 	$last_device_monitoring_id = $db->insert_id;
+
+	$statement = $db->prepare("INSERT INTO `device_monitoring_photos` 
+							(`device_monitoring_ID`,
+							 `filename_link`,
+							 `remarks`)
+						   VALUES  (?,?,?) ");
+
+	$statement->bind_param('sss',$last_device_monitoring_id,$photo,$notes);
+	$statement->execute();
 
 
 	// print_r($pests);
@@ -291,7 +302,10 @@ while($statement->fetch()){
 	$device_monitoring[$device_code]["device_condition"] = "";    
 	$device_monitoring[$device_code]["activity_ID"] = "";    
 	$device_monitoring[$device_code]["activity"] = "";    
-	$device_monitoring[$device_code]["timestamp"] = "";    
+	$device_monitoring[$device_code]["timestamp"] = "";
+	$device_monitoring[$device_code]["photo"] = "";
+	$device_monitoring[$device_code]["notes"] = "";
+	// echo $device_code."<br />";
 
 }
 
@@ -338,6 +352,7 @@ $return["device_monitoring"] = array();
 
 while($statement->fetch()){
 
+	// echo $device_code."<br />";
 	$device_monitoring[$device_code]["device_monitoring_ID"] = $device_monitoring_ID;    
 	$device_monitoring[$device_code]["service_order_ID"] = $service_order_id;    
 	$device_monitoring[$device_code]["client_location_area_ID"] = $client_location_area_id;
@@ -373,7 +388,7 @@ $device_monitoring_ids = "";
 
 foreach ($device_monitoring as $k) {
 	array_push($return["device_monitoring"] , $k);
-	// print_r($k);
+	// print_r($k["device_code"]);
 	// echo "<br />";
 	$device_monitoring_ids .= "'".$k["device_monitoring_ID"]."',";
 
