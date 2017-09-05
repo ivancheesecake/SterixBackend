@@ -12,18 +12,23 @@ $taskUpdates = $post['task_updates'];
 $device_monitoring_updates= json_decode($post['device_monitoring_updates']);
 $area_monitoring_updates= json_decode($post['area_monitoring_updates']);
 $area_monitoring_pest_updates= json_decode($post['area_monitoring_pest_updates']);
+$existing_images= $post['existing_images'];
 
 // $userID = "12";
 // $taskUpdates = "";
 // $device_monitoring_updates = array();
 // $area_monitoring_updates = array();
 // $area_monitoring_pest_updates = array();
+// $existing_images = '"NONE","JPEG_20170905_212845_1376907026.jpg","JPEG_20170905_213016_255903676.jpg","JPEG_20170905_213144_1827575094.jpg"';
+// $existing_images = '"NONE"';
+
 // $device_monitoring_updates= json_decode('[{"service_order_id":"7","client_location_area_id":"3","device_code":"CTB007","device_condition_id":"4","activity_id":"5","timestamp":"2017-09-02 20:25:02","pests":"[{\"pest_ID\":\"0\",\"number\":\"69\"},{\"pest_ID\":\"1\",\"number\":\"11\"},{\"pest_ID\":\"2\",\"number\":\"10\"},{\"pest_ID\":\"4\",\"number\":\"10\"},{\"pest_ID\":\"5\",\"number\":\"11\"},{\"pest_ID\":\"6\",\"number\":\"11\"},{\"pest_ID\":\"8\",\"number\":\"10\"},{\"pest_ID\":\"9\",\"number\":\"69\"},{\"pest_ID\":\"10\",\"number\":\"69\"},{\"pest_ID\":\"13\",\"number\":\"69\"},{\"pest_ID\":\"15\",\"number\":\"11\"},{\"pest_ID\":\"17\",\"number\":\"10\"}]"},{"service_order_id":"8","client_location_area_id":"5","device_code":"CTB013","device_condition_id":"","activity_id":"","timestamp":"2017-09-02 20:26:19","pests":"[{\"pest_ID\":\"0\",\"number\":\"22\"},{\"pest_ID\":\"2\",\"number\":\"12\"},{\"pest_ID\":\"5\",\"number\":\"93\"}]"}]');
 
 // $area_monitoring_updates = json_decode('[{"service_order_id":"7","client_location_area_id":"3","findings":"neomu","proposed_action":"neomu","timestamp":"2017-09-03 06:54:29"},{"service_order_id":"8","client_location_area_id":"5","findings":"molla","proposed_action":"molla","timestamp":"2017-09-03 06:55:13"}]');
 
 // Connect to Database
-$db = new mysqli('localhost', 'root', '', 'sterix');
+// $db = new mysqli('localhost', 'root', '', 'sterix');
+$db = new mysqli('sterixdb.sterix.online', 'sterixonis', '5t3r1x0nl1n3', 'sterixdb');
 
 if($db->connect_errno > 0){
     die('Unable to connect to database [' . $db->connect_error . ']');
@@ -100,22 +105,59 @@ if ($taskUpdates!=""){
 
 		$task_id =  $pieces2[0];
 		$status =   $pieces2[1];
+		$timestamp =   $pieces2[2];
 
-		if($status == "0")
+		if($status == "0"){
 			$status_converted = "5";
-		else if($status == "2" )
-			$status_converted = "4";
-		else
-			$status_converted = "1";
-
-		$statement = $db->prepare("UPDATE `service_order_task` 
+			$statement = $db->prepare("UPDATE `service_order_task` 
 								   SET `status` = ?	
 								   WHERE `ID` = ?
 						        ");
+			$statement->bind_param('ii',$status_converted,$task_id);
+			$statement->execute();	
 
+		}
+		else if($status == "2" ){
+			$status_converted = "4";
+			$statement = $db->prepare("UPDATE `service_order_task` 
+								   SET `status` = ?, `actual_end_time` = ?	
+								   WHERE `ID` = ?
+						        ");
+			$statement->bind_param('isi',$status_converted,$timestamp,$task_id);
+			$statement->execute();
+		}
+		else{
+			$status_converted = "1";
 
-		$statement->bind_param('ii',$status_converted,$task_id);
-		$statement->execute();
+			$statement = $db->prepare("SELECT `actual_start_time`
+								  
+							   FROM `service_order_task` 
+
+							   WHERE `ID` = ?
+					        ");
+
+			$statement->bind_param('s',$task_id);
+			$statement->execute();
+			$statement->bind_result($actual_start_time);
+
+			while($statement->fetch()){}
+
+			if($actual_start_time == NULL || $actual_start_time == ""){
+				$statement2 = $db->prepare("UPDATE `service_order_task` SET `status` = ?, `actual_start_time` = ?  WHERE `ID` = ?  ");
+				$statement2->bind_param('sss',$status,$timestamp,$task_id);
+				$statement2->execute();
+			}
+
+			else{
+
+				$statement2 = $db->prepare("UPDATE `service_order_task` SET `status` = ?  WHERE `ID` = ?  ");
+				$statement2->bind_param('ss',$status,$task_id);
+				$statement2->execute();
+			}
+
+		}
+
+		
 	}
 }
 
@@ -562,6 +604,37 @@ while($statement->fetch()){
 	
     array_push($return["area_monitoring_pest"], $area_monitoring_pest);
 	
+}
+
+// Process images for download
+
+$statement = $db->prepare("SELECT `filename_link`
+	  
+							FROM `device_monitoring_photos` 
+
+							WHERE NOT `filename_link` IN ($existing_images) AND
+
+							`device_monitoring_ID` IN ($device_monitoring_ids)
+							");
+
+$statement->execute();
+$statement->bind_result($filename_link);
+
+
+// 
+$return["images"] = array();
+
+while($statement->fetch()){
+
+	// echo $filename_link."<br />";
+	$img = 'uploadedImages/'.$filename_link;
+    $picture = base64_encode(file_get_contents($img));
+
+	$image["filename"] = $filename_link;
+	$image["encoded"] = $picture;
+	array_push($return["images"],$image);
+	
+    // echo $picture;
 }
 
 echo json_encode($return,JSON_UNESCAPED_UNICODE);

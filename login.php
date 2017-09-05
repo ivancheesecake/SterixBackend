@@ -8,7 +8,8 @@ $password = $post['password'];
 // $password = "ivan";
 
 
-$db = new mysqli('localhost', 'root', '', 'sterix');
+// $db = new mysqli('localhost', 'root', '', 'sterix');
+$db = new mysqli('sterixdb.sterix.online', 'sterixonis', '5t3r1x0nl1n3', 'sterixdb');
 
 if($db->connect_errno > 0){
     die('Unable to connect to database [' . $db->connect_error . ']');
